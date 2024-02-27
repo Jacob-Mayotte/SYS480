@@ -109,3 +109,41 @@ Function Select-VM([string] $folder)
     }
 }
 
+function Select-Folder() {
+    $folder_selected = $null
+
+    try {
+        $folders = Get-Folder
+        $index = 1
+
+        # Display the list of folders with their index
+        foreach ($folder in $folders) {
+            Write-Host "[$index] $($folder.Name)"
+            $index += 1
+        }
+
+        while ($true) {
+            # Prompt user to enter the index number of the folder
+            $pick_index = Read-Host "Enter the index number of the folder you wish to select"
+
+            # Validate if the input is a valid number and within the range
+            if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $folders.Count) {
+                $folder_selected = $folders[$pick_index - 1]
+                Write-Host "You picked folder: $($folder_selected.Name)"
+                
+                # Retrieve the contents of the selected folder
+                $folderContents = Get-VM -Location $folder_selected
+                Write-Host "Contents of the folder:"
+                $folderContents | Format-Table Name, PowerState, NumCpus, MemoryGB -AutoSize
+                
+                return $folder_selected
+            } else {
+                Write-Host "Invalid index. Please enter a valid index."
+            }
+        }
+    } catch {
+        Write-Host "Error: $_" -ForegroundColor Red
+        return $null
+    }
+}
+
