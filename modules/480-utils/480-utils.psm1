@@ -147,3 +147,80 @@ function Select-Folder() {
     }
 }
 
+function Select-Datastore() {
+    $datastore_selected = $null
+
+    try {
+        $datastores = Get-Datastore
+        $index = 1
+
+        # Display the list of datastores with their index
+        foreach ($datastore in $datastores) {
+            Write-Host "[$index] $($datastore.Name)"
+            $index += 1
+        }
+
+        while ($true) {
+            # Prompt user to enter the index number of the datastore
+            $pick_index = Read-Host "Enter the index number of the datastore you wish to select"
+
+            # Validate if the input is a valid number and within the range
+            if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $datastores.Count) {
+                $datastore_selected = $datastores[$pick_index - 1]
+                Write-Host "You picked datastore: $($datastore_selected.Name)"
+                
+                # Retrieve the contents of the selected datastore
+                $datastoreContents = Get-VM -Datastore $datastore_selected
+                Write-Host "Contents of the datastore:"
+                $datastoreContents | Format-Table Name, PowerState, NumCpus, MemoryGB -AutoSize
+                
+                return $datastore_selected
+            } else {
+                Write-Host "Invalid index. Please enter a valid index."
+            }
+        }
+    } catch {
+        Write-Host "Error: $_" -ForegroundColor Red
+        return $null
+    }
+}
+
+function Select-Snapshot() {
+    $snapshot_selected = $null
+
+    try {
+        $vms = Get-VM
+        $snapshots = @()
+
+        # Collect snapshots from all VMs
+        foreach ($vm in $vms) {
+            $snapshots += Get-Snapshot -VM $vm
+        }
+
+        $index = 1
+
+        # Display the list of snapshots with their index
+        foreach ($snapshot in $snapshots) {
+            Write-Host "[$index] $($snapshot.Name) - VM: $($snapshot.VM.Name)"
+            $index += 1
+        }
+
+        while ($true) {
+            # Prompt user to enter the index number of the snapshot
+            $pick_index = Read-Host "Enter the index number of the snapshot you wish to select"
+
+            # Validate if the input is a valid number and within the range
+            if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $snapshots.Count) {
+                $snapshot_selected = $snapshots[$pick_index - 1]
+                Write-Host "You picked snapshot: $($snapshot_selected.Name) - VM: $($snapshot_selected.VM.Name)"
+                
+                return $snapshot_selected
+            } else {
+                Write-Host "Invalid index. Please enter a valid index."
+            }
+        }
+    } catch {
+        Write-Host "Error: $_" -ForegroundColor Red
+        return $null
+    }
+}

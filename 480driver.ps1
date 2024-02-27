@@ -14,4 +14,8 @@ Select-Folder
 Write-Host "Selecting your VM" 
 Select-VM -folder 'BASEVM'
 
-# 
+# Select datastore! 
+Select-Datastore
+
+# Select Snapshot
+Select-Snapshot
