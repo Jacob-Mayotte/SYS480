@@ -149,6 +149,7 @@ function Select-Folder() {
 
 function Select-Datastore() {
     $datastore_selected = $null
+    # Take a snapshot of the 
 
     try {
         $datastores = Get-Datastore
@@ -214,7 +215,8 @@ function Select-Snapshot() {
                 $snapshot_selected = $snapshots[$pick_index - 1]
                 Write-Host "You picked snapshot: $($snapshot_selected.Name) - VM: $($snapshot_selected.VM.Name)"
                 
-                return $snapshot_selected
+                return $snapshot_selected 
+                # Write-Host $snapshot_selected
             } else {
                 Write-Host "Invalid index. Please enter a valid index."
             }
@@ -225,42 +227,48 @@ function Select-Snapshot() {
     }
 }
 
-function new_clone($selected_vm, $snapshot_selected, $datastore_selected)
+function new_clone([string] $vm, $snap, $ds)
 {
     try {
-        if ($null -eq $snapshot_selected) {
+        if ($snapshot_selected) {
             Write-Host "Snapshot not found for VM $($selected_vm.Name). Exiting script."
         } else {
             # Debug information
-            Write-Host "Selected VM: $($selected_vm.Name)"
-            Write-Host "Selected Snapshot: $($snapshot_selected.Name)"
-            Write-Host "Selected Datastore: $($datastore_selected.Name)"
+            $ds = $ds.Name
+            Write-Host "Selected VM: $($vm)"
+            Write-Host "Selected Snapshot: $($snap)"
+            Write-Host "Selected Datastore: $($ds)"
 
             # Prompt the user for the new clone name
             $cloneName = Read-Host "Enter the new clone name"
 
-            # Debug information
-            Write-Host "Creating linked clone: $($selected_vm.Name).linked from snapshot $($snapshot_selected.Name) on datastore $($datastore_selected.Name)..."
+            Write-Host $vm $ds $snap $conf.esxi_host
+
             
             # Create the linked clone
-            $linkedVM = New-VM -LinkedClone -Name "$($selected_vm.Name).linked" -VM $selected_vm -ReferenceSnapshot $snapshot_selected -Datastore $datastore_selected
-            
-            # Debug information
-            Write-Host "Linked clone created successfully: $($linkedVM.Name)"
+            $linkedVM = New-VM -LinkedClone -Name "$($cloneName).linked" -VM $vm -ReferenceSnapshot $snap -VMHost $conf.esxi_host -Datastore $ds 
 
-            # Retrieve the linked VM (some systems may require this step)
-            $linkedVM = Get-VM -Name "$($selected_vm.Name).linked"
+            # Debug information
+            Write-Host "Linked clone created successfully: $($cloneName).linked"
+            $test = Get-VM -Name "$($cloneName).linked"
+            $test
+
+
+            # Retrieve the linked VM 
+            $linkedVM = Get-VM -Name "$($cloneName)"
             if ($null -eq $linkedVM) {
                 Write-Host "Linked clone not found. Exiting script."
                 return
             }
             
             # Debug information
-            Write-Host "Linked clone retrieved successfully: $($linkedVM.Name)"
+            Write-Host "Linked clone retrieved successfully: $($cloneName)"
+
+            Write-Host $vm $ds $snap $conf.esxi_host
 
             # Create a new base VM from the linked clone
             Write-Host "Creating new base VM: $($cloneName)..."
-            $newVM = New-VM -Name $cloneName -VM $linkedVM -Datastore $datastore_selected
+            $newVM = New-VM -Name $cloneName -VM $linkedVM -Datastore $ds -ReferenceSnapshot $snap -VMHost $conf.esxi_host
             
             # Debug information
             Write-Host "New base VM '$($cloneName)' created successfully."

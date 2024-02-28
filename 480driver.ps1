@@ -12,13 +12,13 @@ Select-Folder
 
 # Now after the user sees the different folders/VMs seeded inside, they can decide what VM to interact with! 
 Write-Host "Selecting your VM" 
-Select-VM -folder 'BASEVM'
+$VM_variable = Select-VM -folder 'BASEVM'
 
 # Select datastore! 
-Select-Datastore
+$datastore_variable = Select-Datastore
 
 # Select Snapshot
-Select-Snapshot
+$snapshot_variable = Select-Snapshot
 
 # Testing new clone
-new_clone
+$clone_var = new_clone -vm $VM_variable -ds $datastore_variable -snap $snapshot_variable
