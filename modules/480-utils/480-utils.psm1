@@ -224,3 +224,58 @@ function Select-Snapshot() {
         return $null
     }
 }
+
+function new_clone($selected_vm, $snapshot_selected, $datastore_selected)
+{
+    try {
+        if ($null -eq $snapshot_selected) {
+            Write-Host "Snapshot not found for VM $($selected_vm.Name). Exiting script."
+        } else {
+            # Debug information
+            Write-Host "Selected VM: $($selected_vm.Name)"
+            Write-Host "Selected Snapshot: $($snapshot_selected.Name)"
+            Write-Host "Selected Datastore: $($datastore_selected.Name)"
+
+            # Prompt the user for the new clone name
+            $cloneName = Read-Host "Enter the new clone name"
+
+            # Debug information
+            Write-Host "Creating linked clone: $($selected_vm.Name).linked from snapshot $($snapshot_selected.Name) on datastore $($datastore_selected.Name)..."
+            
+            # Create the linked clone
+            $linkedVM = New-VM -LinkedClone -Name "$($selected_vm.Name).linked" -VM $selected_vm -ReferenceSnapshot $snapshot_selected -Datastore $datastore_selected
+            
+            # Debug information
+            Write-Host "Linked clone created successfully: $($linkedVM.Name)"
+
+            # Retrieve the linked VM (some systems may require this step)
+            $linkedVM = Get-VM -Name "$($selected_vm.Name).linked"
+            if ($null -eq $linkedVM) {
+                Write-Host "Linked clone not found. Exiting script."
+                return
+            }
+            
+            # Debug information
+            Write-Host "Linked clone retrieved successfully: $($linkedVM.Name)"
+
+            # Create a new base VM from the linked clone
+            Write-Host "Creating new base VM: $($cloneName)..."
+            $newVM = New-VM -Name $cloneName -VM $linkedVM -Datastore $datastore_selected
+            
+            # Debug information
+            Write-Host "New base VM '$($cloneName)' created successfully."
+
+            # Take a snapshot of the new base VM
+            Write-Host "Taking snapshot 'Base' for new base VM..."
+            $newVM | New-Snapshot -Name "Base"
+            Write-Host "Snapshot 'Base' created for the new base VM."
+
+            # Remove the linked clone
+            Write-Host "Removing linked clone: $($linkedVM.Name)..."
+            $linkedVM | Remove-VM -Confirm:$false
+            Write-Host "Linked clone removed successfully."
+        }
+    } catch {
+        Write-Host "Error: $_" -ForegroundColor Red
+    }
+}

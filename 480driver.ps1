@@ -3,7 +3,7 @@ Import-Module '/home/jacob/SYS480/modules/480-utils' -Force
 480Banner
 
 # Set the configuration file path to our .json
-$conf = Get-480Config -config_path = "/home/jacob/SYS480/480.json"
+$conf = Get-480Config -config_path "/home/jacob/SYS480/480.json"
 480Connect -server $conf.vcenter_server # Connect to my vcenter
 
 # Select-folder function in use
@@ -19,3 +19,6 @@ Select-Datastore
 
 # Select Snapshot
 Select-Snapshot
+
+# Testing new clone
+new_clone
