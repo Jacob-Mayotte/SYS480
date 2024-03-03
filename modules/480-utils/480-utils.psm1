@@ -32,41 +32,19 @@ function Get-480Config([string]$config_path)
     return $conf
 }
 
-# Function Select-VM([string] $folder)
-# {
-#     $selected_vm=$null
-#     try 
-#     {
-#         $vms = Get-VM -Location $folder
-#         $index = 1
-#         # The for loop below is writing the index + 1 and the VM name. 
-#         foreach($vm in $vms)
-#         {
-#             Write-Host [$index] $vm.name
-#             $index+=1
-#         }
-#         $pick_index = Read-Host "Which index number [x] do you wish to pick?"
-#         # 480-TODO Need to deal with an invalid index (consider making this check a function)
-#         $selected_vm = $vms[$pick_index -1]
-#         Write-Host "You picked " $selected_vm.Name
-#         # note this is a full on vm object that we can interract with!
-#         return $selected_vm    
-#     }
-#     catch 
-#     {
-#         Write-Host "Invalid Folder: $folder" -ForegroundColor Red    <#Do this if a terminating exception happens#>
-#     }
-        
-# }
-
-# I may be weird but I just copied the function that was provided to us, then enhanced it below. I commented out the original function for future reference. 
-Function Select-VM([string] $folder)  
+Function Select-VM([string] $folderName)  
 {
     $selected_vm = $null
 
     try 
     {
         # Retrieve list of VMs in the specified folder
+        $folder = Get-Folder -Name $conf.vm_folder
+        if ($null -eq $folder) {
+            Write-Host "Folder '$folderName' not found. Exiting script." -ForegroundColor Red
+            return $null
+        }
+
         $vms = Get-VM -Location $folder
 
         if ($vms.Count -eq 0) {
@@ -75,7 +53,7 @@ Function Select-VM([string] $folder)
             return $null
         }
 
-        # Display the list of VMs with indices
+        # Display  list of VMs set to indices
         $index = 1
         foreach ($vm in $vms)
         {
@@ -109,47 +87,9 @@ Function Select-VM([string] $folder)
     }
 }
 
-function Select-Folder() {
-    $folder_selected = $null
-
-    try {
-        $folders = Get-Folder
-        $index = 1
-
-        # Display the list of folders with their index
-        foreach ($folder in $folders) {
-            Write-Host "[$index] $($folder.Name)"
-            $index += 1
-        }
-
-        while ($true) {
-            # Prompt user to enter the index number of the folder
-            $pick_index = Read-Host "Enter the index number of the folder you wish to select"
-
-            # Validate if the input is a valid number and within the range
-            if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $folders.Count) {
-                $folder_selected = $folders[$pick_index - 1]
-                Write-Host "You picked folder: $($folder_selected.Name)"
-                
-                # Retrieve the contents of the selected folder
-                $folderContents = Get-VM -Location $folder_selected
-                Write-Host "Contents of the folder:"
-                $folderContents | Format-Table Name, PowerState, NumCpus, MemoryGB -AutoSize
-                
-                return $folder_selected
-            } else {
-                Write-Host "Invalid index. Please enter a valid index."
-            }
-        }
-    } catch {
-        Write-Host "Error: $_" -ForegroundColor Red
-        return $null
-    }
-}
-
 function Select-Datastore() {
     $datastore_selected = $null
-    # Take a snapshot of the 
+     
 
     try {
         $datastores = Get-Datastore
@@ -186,6 +126,7 @@ function Select-Datastore() {
     }
 }
 
+ 
 function Select-Snapshot() {
     $snapshot_selected = $null
 
@@ -210,7 +151,7 @@ function Select-Snapshot() {
             # Prompt user to enter the index number of the snapshot
             $pick_index = Read-Host "Enter the index number of the snapshot you wish to select"
 
-            # Validate if the input is a valid number and within the range
+            # Validate if the input is a valid number and within the range // Replace with simplified code this is complicated - specify name of snapshot 
             if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $snapshots.Count) {
                 $snapshot_selected = $snapshots[$pick_index - 1]
                 Write-Host "You picked snapshot: $($snapshot_selected.Name) - VM: $($snapshot_selected.VM.Name)"
@@ -227,56 +168,72 @@ function Select-Snapshot() {
     }
 }
 
+ 
 function new_clone([string] $vm, $snap, $ds)
 {
     try {
-        if ($snapshot_selected) {
-            Write-Host "Snapshot not found for VM $($selected_vm.Name). Exiting script."
+        if (-not $snap) {
+            Write-Host "Snapshot not found for VM $($vm.Name). Exiting script."
         } else {
-            # Debug information
+            # Debug info 
             $ds = $ds.Name
-            Write-Host "Selected VM: $($vm)"
-            Write-Host "Selected Snapshot: $($snap)"
+            Write-Host "Selected VM: $($selected_vm)"
+            Write-Host "Selected Snapshot: $($snap.Name)"
             Write-Host "Selected Datastore: $($ds)"
 
-            # Prompt the user for the new clone name
+            # Prompt user for the new linked clone name
             $cloneName = Read-Host "Enter the new clone name"
 
+            # Define the linked clone name
+            $linkedCloneName = "$cloneName.linked"
+
+            # Debug info 
             Write-Host $vm $ds $snap $conf.esxi_host
 
-            
-            # Create the linked clone
-            $linkedVM = New-VM -LinkedClone -Name "$($cloneName).linked" -VM $vm -ReferenceSnapshot $snap -VMHost $conf.esxi_host -Datastore $ds 
+            # Create the linked clone - set to variable/ 
+            $linkedVM = New-VM -LinkedClone -Name $linkedCloneName -VM $vm -ReferenceSnapshot $snap -VMHost $conf.esxi_host -Datastore $ds 
 
-            # Debug information
-            Write-Host "Linked clone created successfully: $($cloneName).linked"
-            $test = Get-VM -Name "$($cloneName).linked"
+            # Debug info 
+            Write-Host "Linked clone created successfully: $linkedCloneName"
+            $test = Get-VM -Name "$linkedCloneName"
             $test
 
-
             # Retrieve the linked VM 
-            $linkedVM = Get-VM -Name "$($cloneName)"
-            if ($null -eq $linkedVM) {
+            $linkedVM = Get-VM -Name $linkedCloneName
+            if ($null -eq $linkedVM) { # - Error handling too 
                 Write-Host "Linked clone not found. Exiting script."
                 return
             }
-            
-            # Debug information
+
+            # Debug info 
             Write-Host "Linked clone retrieved successfully: $($cloneName)"
 
-            Write-Host $vm $ds $snap $conf.esxi_host
+            Write-Host $vm $ds $snap $conf.esxi_host # Debug Line  to observe variables
 
-            # Create a new base VM from the linked clone
+            # Create a new base VM from the linked clone using New-VM
             Write-Host "Creating new base VM: $($cloneName)..."
-            $newVM = New-VM -Name $cloneName -VM $linkedVM -Datastore $ds -ReferenceSnapshot $snap -VMHost $conf.esxi_host
             
-            # Debug information
-            Write-Host "New base VM '$($cloneName)' created successfully."
+            # Specify the folder where the new VM should be created - call from 480.json file
+            $folder = Get-Folder -Name $conf.vm_folder
+            if ($null -eq $folder) {
+                Write-Host "Folder '$($conf.vm_folder)' not found. Exiting script."
+                return
+            }
+            
+            # Prompt the user for the new base clone name
+            $cloneName = Read-Host "Enter the new base clone name"
 
-            # Take a snapshot of the new base VM
-            Write-Host "Taking snapshot 'Base' for new base VM..."
-            $newVM | New-Snapshot -Name "Base"
-            Write-Host "Snapshot 'Base' created for the new base VM."
+            # Clone the linked-VM using the New-VM cmdlet
+            $newVM = New-VM -VM $linkedVM -Name $cloneName -VMHost $conf.esxi_host -Location $conf.vm_folder -RunAsync 
+            $newVM | Wait-Task
+
+            # Debug information
+            Write-Host "New base VM '$cloneName' created successfully."
+
+            # Take a snapshot of the new base VM - error here maybe add variable? 
+            # Write-Host "Taking snapshot 'Base' for new base VM..."
+            # $newVM | New-Snapshot -Name "Base"
+            # Write-Host "Snapshot 'Base' created for the new base VM."
 
             # Remove the linked clone
             Write-Host "Removing linked clone: $($linkedVM.Name)..."
@@ -287,3 +244,4 @@ function new_clone([string] $vm, $snap, $ds)
         Write-Host "Error: $_" -ForegroundColor Red
     }
 }
+
