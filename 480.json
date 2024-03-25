@@ -1,6 +1,7 @@
 {
     "vcenter_server" : "vcenter.jacob.local",
-    "vm_folder" : "BASEVM",
+    "vm_folder" : "BASEVM", 
+    "vm2_folder" : "BlueNET",
     "esxi_host" : "192.168.7.34",
     "datastore" : "datastore1-super24",
     "snapshot_name" : "Base"
