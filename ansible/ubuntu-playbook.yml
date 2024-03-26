@@ -1,6 +1,6 @@
-#this playbook performs post provisioning configuration of rocky
-- name: rocky config
-  hosts: rocky
+#this playbook performs post provisioning configuration of ubuntu
+- name: ubuntu config
+  hosts: ubuntu
   tasks:
   - name: create the .ssh directory if it is not there
     file:
@@ -41,24 +41,19 @@
       line: "127.0.1.1  {{ hostname }}"
     become: yes
 
-  - name: run nmcli
-#nmcli connection modify ens192 ipv4.address 10.0.5.10/24 ipv4.gateway 10.0.5.2 ipv4.dns '10.0.5.5 10.0.5.2' ipv4.method manual
-    nmcli:
-      conn_name: "{{ device }}"
-      ip4: "{{ lan_ip }}/24"
-      gw4: "{{ gateway }}"
-      state: present
-      type: ethernet
-      dns4:
-        - "{{ name_server }}"
-        - "{{ gateway }}"
-      method4: manual
+  - name: Netplan
+    template:
+      src: /home/jacob/SYS480/ansible/files/vyos/00-installer-config.yaml.j2
+      dest: /etc/netplan/01-netcfg.yaml
+      mode: "0644"
+      owner: root
+      group: root
     become: yes
 
-  - name: bounce the box
-    shell: "sleep 5 && shutdown -r"
+  - name: Netplan Application
+    shell: "sudo netplan apply"
     become: yes
     async: 1
     poll: 0
 
-# COMMAND TO BE RUN: ansible-playbook -i inventories/linux.yaml --ask-pass ./ansible/rocky-playbook.yml
+# COMMAND TO BE RUN: ansible-playbook -i inventories/linux.yaml --ask-pass ubuntu-playbook.yml -K

@@ -1,0 +1,33 @@
+linux:
+  hosts:
+  children:
+    rocky:
+      hosts:
+        10.0.5.77:
+          hostname: rocky-1
+          lan_ip: 10.0.5.10
+        10.0.5.75:
+          hostname: rocky-2
+          lan_ip: 10.0.5.11
+        10.0.5.76:
+          hostname: rocky-3
+          lan_ip: 10.0.5.12
+      vars:
+        device: "{{ ansible_default_ipv4.interface }}"
+
+    ubuntu:
+      hosts:
+        10.0.5.79:
+          hostname: ubuntu-1
+          lan_ip: 10.0.5.30
+        10.0.5.80:
+          hostname: ubuntu-2
+          lan_ip: 10.0.5.31
+
+  vars:
+    public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC8OcD8SINWsdVvOz9SqbTHt2ZzqEK+l4HVfYT2i/EnkxaWmJX3e6XG7CbanuC78mN0wqPfQk1aEXnAlPbyok4FxehdDv38XSlgVOAIURuuRp22DVx8j+jYbjR0sXDLRjCAczvbsIedYLVuIuEuPYY/1fZSGEtW/SQMBt7x6SDMo4ZTsajAwCEYwAKkrHr7eYUDi+q+6AfX9ZKn+hcO6Afazn7xLy6/D/0cKsruZySZ/6t7EhXz8gPn118vVYO1H8R/EFxnIrJx50oep/lHsEqyit3Drdfp3BZq0hfxHgNqqglE3lT6K7zTSuufH8ycZsL4YmpXR73xV0es0xUtV2wFLoGoWmPzKlSfwvpOw0jTFtlhd9BxUXhEbRiRFHpsQBpf4vKL0+HLv6mR4yoGlY2GhxHXObynIEfZNg31GsNOAOH09qdF6tCFZGBTRI8Kt37EqNQiyYpGttPwQ3FPJbJj1bdqkp53GiyCPob0eIfxY/7I7qNbtHjdBqcpxUXkzw8LtbsnY9Zio/xK+iUwOuSwnuKSgamZS1KrEPTmOtfQZojhUJQFGlIw4r0lwxhHfA/fFbgV1Gh/5S9mdJRB/GLPqYu+aM2OD6x4uA2by8Hrp7KdpU1qbczYO7PYiNjopIXaN2Gb9bsxO4tlP7PzbKDKBNC3UDEw7n4OWLVblaGObw== jacob@xubuntu-mgmt"
+    ansible_user: rangeuser
+    prefix: 24
+    gateway: 10.0.5.2
+    name_server: 10.0.5.5
+    domain: blue1.local
