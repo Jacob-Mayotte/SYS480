@@ -1,0 +1,44 @@
+- name: centos config
+  hosts: centos
+  tasks:
+- name: Wazuh Server Config
+  hosts: centos
+  tasks:
+    - name: Allow port 443, 1514, 1515, 55000 through firewalld # 1514, 1515, 55000 are for Wazuh Manager and 443 is for the Kibana interface 
+      become: yes 
+      shell: firewall-cmd --permanent --add-port=443/tcp && firewall-cmd --permanent --add-port=1514/tcp && firewall-cmd --permanent --add-port=1515/tcp && firewall-cmd --permanent --add-port=55000/tcp && firewall-cmd --reload
+    
+    - name: Get the Wazuh Install Script
+      shell: "curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh"
+      become: yes
+    
+    - name: Execute the install script
+      shell: "bash ./wazuh-install.sh -a -i && cd /home/{{ ansible_user }}/"
+      become: yes
+
+    - name: Retrieve the users passwords
+      shell: "tar -O -xvf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt" 
+      become: yes
+
+    - name: Enable and Start Wazuh Manager
+      shell: "systemctl enable wazuh-indexer-performance-analyzer && systemctl start wazuh-indexer-performance-analyzer"
+      become: yes
+  
+    - name: reboot the box 
+      shell: "sleep 5 && reboot"
+      become: yes
+      async: 1
+      poll: 0
+
+    # - name: Start the services # This is to start the services after the reboot!
+    #   shell: "sudo systemctl start wazuh-indexer-performance-analyzer.service && systemctl start wazuh-manager"
+    #   become: yes      
+
+# - name: bounce the box
+#   hosts: centos
+#   tasks:
+#     - name: bounce the box
+#       shell: "sleep 5 && shutdown -r"
+#       become: yes
+#       async: 1
+#       poll: 0
