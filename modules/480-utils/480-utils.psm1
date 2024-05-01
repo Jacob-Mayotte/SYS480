@@ -31,142 +31,113 @@ function Get-480Config([string]$config_path)
     }
     return $conf
 }
+Function Select-Folder {
+    try {
+        # Retrieves folder names from 480.json file
+        $folders = @($conf.vm_folder, $conf.vm2_folder)
 
-Function Select-VM([string] $folderName)  
-{
-    $selected_vms = @()
+        do {
+            Write-Host "Available folders:"
+            for ($i = 0; $i -lt $folders.Count; $i++) {
+                Write-Host "$($i + 1). $($folders[$i])"
+            }
 
-    try 
-    {
-        # Retrieve list of VMs in the specified folders
-        $folder1 = Get-Folder -Name $conf.vm_folder
-        $folder2 = Get-Folder -Name $conf.vm2_folder
+            $folderIndex = Read-Host "Enter the index number of the folder you wish to select"
+            if ($folderIndex -ge 1 -and $folderIndex -le $folders.Count) {
+                return $folders[$folderIndex - 1]
+            } else {
+                Write-Host "Invalid index. Please enter a valid index between 1 and $($folders.Count)" -ForegroundColor Red
+            }
+        } while ($true)
+    }
+    catch {
+        Write-Host "Error: $_" -ForegroundColor Red
+        return $null
+    }
+}
 
-        if ($null -eq $folder1 -or $null -eq $folder2) {
-            Write-Host "One or more folders not found. Exiting script." -ForegroundColor Red
+function Select-VM {
+    try {
+        $selectedFolder = Select-Folder 
+        $folder = Get-Folder -Name $selectedFolder
+        if ($null -eq $folder) {
+            Write-Host "Folder '$selectedFolder' not found. Exiting script." -ForegroundColor Red
             return $null
         }
-
-        $vms1 = Get-VM -Location $folder1
-        $vms2 = Get-VM -Location $folder2
-
-        if ($vms1.Count -eq 0 -and $vms2.Count -eq 0) {
-            # Inform user if no VMs are found in both folders
-            Write-Host "No virtual machines found in $folder1 and $folder2" -ForegroundColor Yellow
+        $vms = Get-VM -Location $folder
+        if ($vms.Count -eq 0) {
+            Write-Host "No virtual machines found in folder '$selectedFolder'" -ForegroundColor Yellow
             return $null
         }
-
-        # Add VMs from folder 1 to the selected VMs array
-        $selected_vms += $vms1
-
-        # Add VMs from folder 2 to the selected VMs array
-        $selected_vms += $vms2
-
-        # Display list of selected VMs with indices
+        Write-Host "Available VMs in folder '$selectedFolder':"
         $index = 1
-        foreach ($vm in $selected_vms)
-        {
-            Write-Host "[$index] $($vm.Name)"
+        $vms | ForEach-Object {
+            Write-Host "$index. $($_.Name)"
             $index++
         }
-
-        # Loop until a valid index value is entered
         do {
-            # Prompt the user to enter the index number of the VM they wish to select
             $pick_index = Read-Host "Enter the index number of the VM you wish to select"
-
-            # Check if the input is a number and within the range of available indices
-            if ($pick_index -ge 1 -and $pick_index -le $selected_vms.Count) {
-                # Retrieve the selected VM based on the index
-                $selected_vm = $selected_vms[$pick_index - 1]
-                Write-Host "You picked $($selected_vm.Name)"
-            } else {
-                # Inform the user of an invalid index and prompt again
-                Write-Host "Invalid index. Please enter a valid index between 1 and $($selected_vms.Count)" -ForegroundColor Red
+            $isValidIndex = $pick_index -ge 1 -and $pick_index -le $vms.Count # Check if the input is a valid number and within the range
+            if (-not $isValidIndex) { # Iinput ont valid display an error message
+                Write-Host "Invalid index. Please enter a valid index between 1 and $($vms.Count)" -ForegroundColor Red
             }
-        } while (-not $selected_vm)  # Continue the loop until a valid VM is selected
-
-        return $selected_vm
-    }
-    catch 
-    {
-        # Handles errors that occur during VM selection
+        } while (-not $isValidIndex)   # Loop until a valid index is selected
+        return $vms[$pick_index - 1]  # Return the VM object instead of just its name
+    } catch {
         Write-Host "Error: $_" -ForegroundColor Red
         return $null
     }
 }
 
 function Select-Datastore() {
-    $datastore_selected = $null
-     
-
     try {
-        $datastores = Get-Datastore
-        $index = 1
+        $datastores = Get-Datastore # gets the datastores from vSphere
+        $datastoresCount = $datastores.Count # counts the # of datastores
 
         # Display the list of datastores with their index
-        foreach ($datastore in $datastores) {
-            Write-Host "[$index] $($datastore.Name)"
-            $index += 1
+        for ($i = 0; $i -lt $datastoresCount; $i++) { # loops through the datastores and lists them with their index #
+            Write-Host ("[" + ($i + 1) + "] " + $datastores[$i].Name) # writes the datastore name & assigning a index #
         }
 
-        while ($true) {
-            # Prompt user to enter the index number of the datastore
-            $pick_index = Read-Host "Enter the index number of the datastore you wish to select"
+        while ($true) { # loops until a valid index is selected
+            $pick_index = Read-Host "Enter the index number of the datastore you wish to select" # prompts the user to select a datastore
 
-            # Validate if the input is a valid number and within the range
-            if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $datastores.Count) {
-                $datastore_selected = $datastores[$pick_index - 1]
-                Write-Host "You picked datastore: $($datastore_selected.Name)"
-                
-                # Retrieve the contents of the selected datastore
-                $datastoreContents = Get-VM -Datastore $datastore_selected
-                Write-Host "Contents of the datastore:"
-                $datastoreContents | Format-Table Name, PowerState, NumCpus, MemoryGB -AutoSize
-                
-                return $datastore_selected
+            if ($pick_index -ge 1 -and $pick_index -le $datastoresCount) { # Validates if user input is a valid # and within the range
+                $selected_index = [int]$pick_index - 1 # assigns the selected index to a variable
+                Write-Host "You picked datastore: $($datastores[$selected_index].Name)"
+                return $datastores[$selected_index]
             } else {
                 Write-Host "Invalid index. Please enter a valid index."
             }
         }
-    } catch {
+    } catch { # failsafe for errors
         Write-Host "Error: $_" -ForegroundColor Red
         return $null
     }
 }
 
- 
-function Select-Snapshot() {
+function Select-Snapshot() { 
     $snapshot_selected = $null
 
     try {
-        $vms = Get-VM
-        $snapshots = @()
-
-        # Collect snapshots from all VMs
-        foreach ($vm in $vms) {
-            $snapshots += Get-Snapshot -VM $vm
-        }
-
-        $index = 1
-
+        $snapshots = Get-VM | ForEach-Object { Get-Snapshot -VM $_ } # gets the snapshots for each VM
         # Display the list of snapshots with their index
-        foreach ($snapshot in $snapshots) {
-            Write-Host "[$index] $($snapshot.Name) - VM: $($snapshot.VM.Name)"
-            $index += 1
+        for ($i = 0; $i -lt $snapshots.Count; $i++) { 
+            $snapshot = $snapshots[$i] # assigns the snapshot to a variable
+            Write-Host ("[" + ($i + 1) + "] " + $snapshot.Name + " - VM: " + $snapshot.VM.Name) # writes the snapshot name, VM name, and assigns a index #
         }
-
         while ($true) {
             # Prompt user to enter the index number of the snapshot
             $pick_index = Read-Host "Enter the index number of the snapshot you wish to select"
 
+            # Convert user input to integer
+            $pick_index = [int]$pick_index
+
             # Validate if the input is a valid number and within the range of available indices 
-            if ($pick_index -match '^\d+$' -and $pick_index -ge 1 -and $pick_index -le $snapshots.Count) {
+            if ($pick_index -ge 1 -and $pick_index -le $snapshots.Count) {
                 $snapshot_selected = $snapshots[$pick_index - 1]
                 Write-Host "You picked snapshot: $($snapshot_selected.Name) - VM: $($snapshot_selected.VM.Name)"
-                
                 return $snapshot_selected 
-                # Write-Host $snapshot_selected
             } else {
                 Write-Host "Invalid index. Please enter a valid index."
             }
@@ -177,32 +148,25 @@ function Select-Snapshot() {
     }
 }
 
- 
-function New_Clone([string] $vm, $snap, $ds)
-{
+function New_Clone {
     try {
-        if (-not $snap) {
-            Write-Host "Snapshot not found for VM $($vm.Name). Exiting script."
-        } else {
-            # Debug info 
-            $ds = $ds.Name
-            Write-Host "Selected VM: $($selected_vm)"
-            Write-Host "Selected Snapshot: $($snap.Name)"
-            Write-Host "Selected Datastore: $($ds)"
+        # Select VM, snapshot, and datastore
+        $selected_vm = Select-VM
+        $selected_snapshot = Select-Snapshot
+        $selected_datastore = Select-Datastore
 
-            # Prompt user for the new linked clone name
-            $cloneName = Read-Host "Enter the new linked clone name"
+        if (-not $selected_snapshot) {
+            Write-Host "Snapshot not found for VM $($selected_vm.Name). Exiting script."
+            return
+        }
+        # Prompt user for the new linked clone name
+        $cloneName = Read-Host "Enter the new linked clone name"
+        $linkedCloneName = "$cloneName.linked"
 
-            # Define the linked clone name
-            $linkedCloneName = "$cloneName.linked"
+        # Create the linked clone
+        $linkedVM = New-VM -LinkedClone -Name $linkedCloneName -VM $selected_vm -ReferenceSnapshot $selected_snapshot -VMHost $conf.esxi_host -Datastore $selected_datastore
 
-            # Debug info 
-            Write-Host $vm $ds $snap $conf.esxi_host
-
-            # Create the linked clone - set to variable/ 
-            $linkedVM = New-VM -LinkedClone -Name $linkedCloneName -VM $vm -ReferenceSnapshot $snap -VMHost $conf.esxi_host -Datastore $ds 
-
-            # Debug info 
+            Write-Host "Linked clone created successfully: $linkedCloneName"
             Write-Host "Linked clone created successfully: $linkedCloneName"
             $test = Get-VM -Name "$linkedCloneName"
             $test
@@ -231,25 +195,53 @@ function New_Clone([string] $vm, $snap, $ds)
             
             # Prompt the user for the new base clone name
             $cloneName = Read-Host "Enter the new base clone name"
+        Write-Host "Linked clone created successfully: $linkedCloneName"
+            $test = Get-VM -Name "$linkedCloneName"
+            $test
 
-            # Clone the linked-VM using the New-VM cmdlet
-            $newVM = New-VM -VM $linkedVM -Name $cloneName -VMHost $conf.esxi_host -Location $conf.vm_folder -RunAsync 
-            $newVM | Wait-Task
+            # Retrieve the linked VM 
+            $linkedVM = Get-VM -Name $linkedCloneName
+            if ($null -eq $linkedVM) { # - Error handling too 
+                Write-Host "Linked clone not found. Exiting script."
+                return
+            }
 
-            # Debug information
-            Write-Host "New base VM '$cloneName' created successfully."
+            # Debug info 
+            Write-Host "Linked clone retrieved successfully: $($cloneName)"
+
+            Write-Host $vm $ds $snap $conf.esxi_host # Debug Line  to observe variables
+
+            # Create a new base VM from the linked clone using New-VM
+            Write-Host "Creating new base VM: $($cloneName)..."
+            
+            # Specify the folder where the new VM should be created - call from 480.json file
+            $folder = Get-Folder -Name $conf.vm_folder
+            if ($null -eq $folder) {
+                Write-Host "Folder '$($conf.vm_folder)' not found. Exiting script."
+                return
+            }
+            
+            # Prompt the user for the new base clone name
+            $cloneName = Read-Host "Enter the new base clone name"
+
+        # Create a new base VM from the linked clone
+        $baseCloneName = Read-Host "Enter the new base clone name"
+        $newVM = New-VM -VM $linkedVM -Name $baseCloneName -VMHost $conf.esxi_host -Location $conf.vm_folder -RunAsync 
+        $newVM | Wait-Task
+
+        Write-Host "New base VM '$baseCloneName' created successfully."
 
             # Remove the linked clone
+            # Remove the linked clone
             Write-Host "Removing linked clone: $($linkedVM.Name)..."
-            $linkedVM | Remove-VM -Confirm:$false
-            Write-Host "Linked clone removed successfully."
-        }
+        # Remove the linked clone
+            Write-Host "Removing linked clone: $($linkedVM.Name)..."
+        $linkedVM | Remove-VM -Confirm:$false 
+        Write-Host "Linked clone removed successfully."
     } catch {
         Write-Host "Error: $_" -ForegroundColor Red
     }
 }
-
-
 function Get-IP 
 {
     try 
@@ -300,22 +292,21 @@ function New-Network
         Write-Host "Error: $_" -ForegroundColor Red
     }
 }
-
 function Manage_Power
 {
     try 
     {
-        # Prompt user to select a VM
+        # Prompts the user to select a VM
         $selectedVM = Select-VM -folderName $conf.vm_folder
 
         if ($selectedVM) {
             # Prompt user to select a power operation
             $powerOperation = Read-Host -Prompt "Enter the power operation (start, stop, restart)"
 
-            # Perform the power operation based on the user input
+            # Performs the power op based on user input
             switch ($powerOperation) {
                 "start" {
-                    Start-VM -VM $selectedVM -Confirm:$false
+                    Start-VM -VM $selectedVM -Confirm:$false 
                     Write-Host "VM '$($selectedVM.Name)' started successfully." -ForegroundColor Green
                 }
                 "stop" {
@@ -336,8 +327,6 @@ function Manage_Power
         Write-Host "Error: $_" -ForegroundColor Red
     }
 }
-
-
 function Set-Network 
 {
     try 

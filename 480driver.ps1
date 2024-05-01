@@ -9,7 +9,7 @@ $conf = Get-480Config -config_path "/home/jacob/SYS480/480.json"
 
 # Select VM 
 Write-Host "Selecting your VM" 
-$VM_variable = Select-VM -folder 'BASEVM'
+$VM_variable = Select-VM
 
 # Select datastore! 
 $datastore_variable = Select-Datastore
